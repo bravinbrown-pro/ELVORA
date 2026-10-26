@@ -1,0 +1,472 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1 & Phase 4.1: Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Global Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'bravinbrown8@gmail.com'
+      );
+    }
+
+    // Validation Blueprints (Pillar 2 - synchronized with firebase-blueprint.json)
+    function isValidProduct(data) {
+      return data.keys().hasAll([
+          'title', 'category', 'price', 'oemCost', 'stockRemaining',
+          'imageKey', 'specs', 'oemSupplier', 'logoImprint',
+          'isPublished', 'ownerEmail', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'title', 'category', 'price', 'oemCost', 'stockRemaining',
+          'imageKey', 'specs', 'oemSupplier', 'logoImprint',
+          'isPublished', 'ownerEmail', 'createdAt', 'updatedAt'
+        ]) &&
+        data.title is string && data.title.size() >= 3 && data.title.size() <= 120 &&
+        data.category is string && data.category.size() <= 32 &&
+        (data.category == 'Combos' || data.category == 'Audio' || data.category == 'Wearables' || data.category == 'Power' || data.category == 'Computing') &&
+        data.price is number && data.price > 0 && data.price <= 100000 &&
+        data.oemCost is number && data.oemCost >= 0 && data.oemCost <= 100000 &&
+        data.stockRemaining is int && data.stockRemaining >= 0 && data.stockRemaining <= 100000 &&
+        data.imageKey is string && data.imageKey.size() >= 2 && data.imageKey.size() <= 64 && data.imageKey.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.specs is string && data.specs.size() >= 5 && data.specs.size() <= 320 &&
+        data.oemSupplier is string && data.oemSupplier.size() >= 3 && data.oemSupplier.size() <= 120 &&
+        data.logoImprint is string && data.logoImprint.size() >= 5 && data.logoImprint.size() <= 80 &&
+        data.isPublished is bool &&
+        data.ownerEmail is string && data.ownerEmail.size() >= 5 && data.ownerEmail.size() <= 120 &&
+        data.ownerEmail == request.auth.token.email &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll([
+          'orderCode', 'buyerId', 'itemTitle', 'itemImageKey', 'quantity',
+          'totalUsd', 'deliveryZone', 'paymentMethod', 'paymentRef',
+          'oemOrderRef', 'logoImprint', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'orderCode', 'buyerId', 'itemTitle', 'itemImageKey', 'quantity',
+          'totalUsd', 'deliveryZone', 'paymentMethod', 'paymentRef',
+          'oemOrderRef', 'logoImprint', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.orderCode is string && data.orderCode.size() >= 6 && data.orderCode.size() <= 24 && data.orderCode.matches('^ELV-[0-9A-Z]+$') &&
+        data.buyerId is string && data.buyerId.size() >= 1 && data.buyerId.size() <= 128 && data.buyerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.itemTitle is string && data.itemTitle.size() >= 3 && data.itemTitle.size() <= 140 &&
+        data.itemImageKey is string && data.itemImageKey.size() >= 2 && data.itemImageKey.size() <= 64 && data.itemImageKey.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.quantity is int && data.quantity >= 1 && data.quantity <= 100 &&
+        data.totalUsd is number && data.totalUsd > 0 && data.totalUsd <= 500000 &&
+        data.deliveryZone is string && data.deliveryZone.size() <= 32 &&
+        (data.deliveryZone == 'express_city' || data.deliveryZone == 'standard_metro' || data.deliveryZone == 'hub_pickup') &&
+        data.paymentMethod is string && data.paymentMethod.size() <= 32 &&
+        (data.paymentMethod == 'mobile_money' || data.paymentMethod == 'card_gateway' || data.paymentMethod == 'instant_bank') &&
+        data.paymentRef is string && data.paymentRef.size() >= 4 && data.paymentRef.size() <= 64 && data.paymentRef.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.oemOrderRef is string && data.oemOrderRef.size() >= 4 && data.oemOrderRef.size() <= 64 && data.oemOrderRef.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.logoImprint is string && data.logoImprint.size() >= 5 && data.logoImprint.size() <= 80 &&
+        data.status is string && data.status.size() <= 32 &&
+        (data.status == 'payment_confirmed' || data.status == 'oem_branding' || data.status == 'local_hub' || data.status == 'out_for_delivery' || data.status == 'delivered') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidOrderPrivatePii(data) {
+      return data.keys().hasAll([
+          'buyerId', 'customerName', 'customerPhone',
+          'deliveryAddress', 'ownerPayoutPhone', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'buyerId', 'customerName', 'customerPhone',
+          'deliveryAddress', 'ownerPayoutPhone', 'createdAt'
+        ]) &&
+        data.buyerId is string && data.buyerId.size() >= 1 && data.buyerId.size() <= 128 && data.buyerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.buyerId == request.auth.uid &&
+        data.customerName is string && data.customerName.size() >= 2 && data.customerName.size() <= 100 &&
+        data.customerPhone is string && data.customerPhone.size() >= 7 && data.customerPhone.size() <= 24 && data.customerPhone.matches('^\\+?[0-9 \\-()]{7,24}$') &&
+        data.deliveryAddress is string && data.deliveryAddress.size() >= 5 && data.deliveryAddress.size() <= 240 &&
+        data.ownerPayoutPhone is string && data.ownerPayoutPhone.size() >= 7 && data.ownerPayoutPhone.size() <= 24 && data.ownerPayoutPhone.matches('^\\+?[0-9 \\-()]{7,24}$') &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidOwnerSetting(data) {
+      return data.keys().hasAll([
+          'ownerUid', 'payoutPhone', 'merchantName',
+          'autoOrderOem', 'autoPostFeed', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerUid', 'payoutPhone', 'merchantName',
+          'autoOrderOem', 'autoPostFeed', 'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerUid is string && data.ownerUid.size() >= 1 && data.ownerUid.size() <= 128 && data.ownerUid.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerUid == request.auth.uid &&
+        data.payoutPhone is string && data.payoutPhone.size() >= 7 && data.payoutPhone.size() <= 24 && data.payoutPhone.matches('^\\+?[0-9 \\-()]{7,24}$') &&
+        data.merchantName is string && data.merchantName.size() >= 2 && data.merchantName.size() <= 80 &&
+        data.autoOrderOem is bool &&
+        data.autoPostFeed is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAiFeedPost(data) {
+      return data.keys().hasAll([
+          'productId', 'productTitle', 'imageKey', 'priceUsd',
+          'stockRemaining', 'oemSupplier', 'logoImprint',
+          'caption', 'isPublic', 'createdBy', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'productId', 'productTitle', 'imageKey', 'priceUsd',
+          'stockRemaining', 'oemSupplier', 'logoImprint',
+          'caption', 'isPublic', 'createdBy', 'createdAt'
+        ]) &&
+        data.productId is string && data.productId.size() >= 2 && data.productId.size() <= 64 && data.productId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.productTitle is string && data.productTitle.size() >= 3 && data.productTitle.size() <= 120 &&
+        data.imageKey is string && data.imageKey.size() >= 2 && data.imageKey.size() <= 64 && data.imageKey.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.priceUsd is number && data.priceUsd > 0 && data.priceUsd <= 100000 &&
+        data.stockRemaining is int && data.stockRemaining >= 0 && data.stockRemaining <= 100000 &&
+        data.oemSupplier is string && data.oemSupplier.size() >= 3 && data.oemSupplier.size() <= 120 &&
+        data.logoImprint is string && data.logoImprint.size() >= 5 && data.logoImprint.size() <= 80 &&
+        data.caption is string && data.caption.size() >= 5 && data.caption.size() <= 320 &&
+        data.isPublic is bool &&
+        data.createdBy is string && data.createdBy.size() >= 1 && data.createdBy.size() <= 128 && data.createdBy.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.createdBy == request.auth.uid &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidReview(data) {
+      return data.keys().hasAll([
+          'productId', 'productTitle', 'authorUid', 'authorName',
+          'rating', 'comment', 'isPublic', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'productId', 'productTitle', 'authorUid', 'authorName',
+          'rating', 'comment', 'isPublic', 'createdAt'
+        ]) &&
+        data.productId is string && data.productId.size() >= 2 && data.productId.size() <= 64 && data.productId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.productTitle is string && data.productTitle.size() >= 3 && data.productTitle.size() <= 120 &&
+        data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 && data.authorUid.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.authorUid == request.auth.uid &&
+        data.authorName is string && data.authorName.size() >= 2 && data.authorName.size() <= 80 &&
+        data.rating is int && data.rating >= 1 && data.rating <= 5 &&
+        data.comment is string && data.comment.size() >= 8 && data.comment.size() <= 400 &&
+        data.isPublic is bool &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidSupportInquiry(data) {
+      return data.keys().hasAll([
+          'senderUid', 'senderName', 'contactInfo', 'topic',
+          'message', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'senderUid', 'senderName', 'contactInfo', 'topic',
+          'message', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.senderUid is string && data.senderUid.size() >= 1 && data.senderUid.size() <= 128 && data.senderUid.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.senderName is string && data.senderName.size() >= 2 && data.senderName.size() <= 80 &&
+        data.contactInfo is string && data.contactInfo.size() >= 5 && data.contactInfo.size() <= 120 &&
+        data.topic is string && data.topic.size() <= 24 &&
+        (data.topic == 'delivery' || data.topic == 'combos' || data.topic == 'payment' || data.topic == 'warranty') &&
+        data.message is string && data.message.size() >= 8 && data.message.size() <= 500 &&
+        data.status is string && data.status.size() <= 16 &&
+        (data.status == 'open' || data.status == 'resolved') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCustomerProfile(data) {
+      return data.keys().hasAll([
+          'uid', 'displayName', 'countryName', 'currencyCode', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'displayName', 'countryName', 'currencyCode', 'createdAt', 'updatedAt'
+        ]) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 && data.uid.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.uid == request.auth.uid &&
+        data.displayName is string && data.displayName.size() >= 2 && data.displayName.size() <= 80 &&
+        data.countryName is string && data.countryName.size() >= 2 && data.countryName.size() <= 60 &&
+        data.currencyCode is string && data.currencyCode.size() == 3 && data.currencyCode.matches('^[A-Z]{3}$') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidCustomerPrivatePii(data) {
+      return data.keys().hasAll([
+          'uid', 'email', 'phone', 'defaultAddress', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'email', 'phone', 'defaultAddress', 'createdAt', 'updatedAt'
+        ]) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 && data.uid.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.uid == request.auth.uid &&
+        data.email is string && data.email.size() >= 5 && data.email.size() <= 120 &&
+        data.email == request.auth.token.email &&
+        data.phone is string && data.phone.size() >= 7 && data.phone.size() <= 24 && data.phone.matches('^\\+?[0-9 \\-()]{7,24}$') &&
+        data.defaultAddress is string && data.defaultAddress.size() >= 5 && data.defaultAddress.size() <= 240 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // 1. Connectivity Probe (/test/connection)
+    match /test/{testId} {
+      allow get: if testId == 'connection';
+      allow list, create, update, delete: if false;
+    }
+
+    // 2. Trusted Admin Registry (Self-assignment strictly forbidden)
+    match /admins/{adminId} {
+      allow get: if isVerifiedUser() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list, create, update, delete: if false;
+    }
+
+    // 3. Electronics & Combos Catalog
+    match /products/{productId} {
+      allow get: if isValidId(productId) && (existing().isPublished == true || isAdmin());
+      // Pillar 8: Zero DB lookups inside list; strictly evaluates resource.data
+      allow list: if existing().isPublished == true || (isVerifiedUser() && existing().ownerEmail == request.auth.token.email && request.auth.token.email == 'bravinbrown8@gmail.com');
+
+      allow create: if isVerifiedUser() &&
+        isValidId(productId) &&
+        isValidProduct(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+
+      allow update: if isVerifiedUser() &&
+        isValidId(productId) &&
+        isValidProduct(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().ownerEmail == existing().ownerEmail &&
+        incoming().updatedAt == request.time &&
+        isAdmin() && (
+          // Action: Restock or Adjust Price/Visibility
+          incoming().diff(existing()).affectedKeys().hasOnly(['price', 'stockRemaining', 'isPublished', 'specs', 'updatedAt'])
+        );
+
+      allow delete: if isVerifiedUser() && isValidId(productId) && isAdmin();
+    }
+
+    // 4. Prepaid Electronics Orders + Isolated PII Subcollection
+    match /orders/{orderId} {
+      allow get: if isVerifiedUser() && isValidId(orderId) && (existing().buyerId == request.auth.uid || isAdmin());
+      // Pillar 8: Enforces resource.data ownership without get()/exists() cost explosion
+      allow list: if isVerifiedUser() && (existing().buyerId == request.auth.uid || request.auth.token.email == 'bravinbrown8@gmail.com');
+
+      allow create: if isVerifiedUser() &&
+        isValidId(orderId) &&
+        isValidOrder(incoming()) &&
+        incoming().buyerId == request.auth.uid &&
+        incoming().status == 'payment_confirmed' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        existsAfter(/databases/$(database)/documents/orders/$(orderId)/private/shipping);
+
+      allow update: if isVerifiedUser() &&
+        isValidId(orderId) &&
+        isValidOrder(incoming()) &&
+        incoming().buyerId == existing().buyerId &&
+        incoming().orderCode == existing().orderCode &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Terminal State Lock: only admin can override once delivered; admin advances tracking stages
+          isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'oemOrderRef', 'updatedAt'])
+        );
+
+      allow delete: if false;
+
+      // Pillar 1 (Master Gate) & Pillar 6 (PII Isolation)
+      match /private/{detailId} {
+        allow get: if isVerifiedUser() &&
+          isValidId(orderId) &&
+          isValidId(detailId) && (
+            (existing().buyerId == request.auth.uid &&
+              get(/databases/$(database)/documents/orders/$(orderId)).data.buyerId == request.auth.uid) ||
+            isAdmin()
+          );
+
+        allow list: if false;
+
+        allow create: if isVerifiedUser() &&
+          isValidId(orderId) &&
+          detailId == 'shipping' &&
+          isValidOrderPrivatePii(incoming()) &&
+          incoming().createdAt == request.time &&
+          existsAfter(/databases/$(database)/documents/orders/$(orderId)) &&
+          getAfter(/databases/$(database)/documents/orders/$(orderId)).data.buyerId == request.auth.uid;
+
+        allow update, delete: if false;
+      }
+    }
+
+    // 5. Store Owner Mobile Configuration
+    match /ownerSettings/{settingId} {
+      allow get: if isVerifiedUser() && isValidId(settingId) && isAdmin();
+      allow list: if false;
+
+      allow create: if isVerifiedUser() &&
+        settingId == 'config' &&
+        isValidOwnerSetting(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+
+      allow update: if isVerifiedUser() &&
+        settingId == 'config' &&
+        isValidOwnerSetting(incoming()) &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        isAdmin() && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['payoutPhone', 'merchantName', 'autoOrderOem', 'autoPostFeed', 'updatedAt'])
+        );
+
+      allow delete: if false;
+    }
+
+    // 6. AI-Generated Product & Stock Feed Posts
+    match /aiPosts/{postId} {
+      allow get: if isValidId(postId) && (existing().isPublic == true || isAdmin());
+      allow list: if existing().isPublic == true || (isVerifiedUser() && existing().createdBy == request.auth.uid);
+
+      allow create: if isVerifiedUser() &&
+        isValidId(postId) &&
+        isValidAiFeedPost(incoming()) &&
+        exists(/databases/$(database)/documents/products/$(incoming().productId)) &&
+        incoming().createdAt == request.time &&
+        isAdmin();
+
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(postId) && isAdmin();
+    }
+
+    // 7. Public Non-PII Verified Buyer Product Reviews
+    match /reviews/{reviewId} {
+      allow get: if isValidId(reviewId) && (existing().isPublic == true || (isVerifiedUser() && existing().authorUid == request.auth.uid) || isAdmin());
+      allow list: if existing().isPublic == true || (isVerifiedUser() && existing().authorUid == request.auth.uid);
+
+      allow create: if isVerifiedUser() &&
+        isValidId(reviewId) &&
+        isValidReview(incoming()) &&
+        incoming().isPublic == true &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/products/$(incoming().productId));
+
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(reviewId) && isAdmin();
+    }
+
+    // 8. Customer Contact Us Inquiries (PII Isolated to Sender or Verified Store Admin)
+    match /inquiries/{inquiryId} {
+      allow get: if isVerifiedUser() && isValidId(inquiryId) && (existing().senderUid == request.auth.uid || isAdmin());
+      // Pillar 8: Enforces resource.data ownership without get()/exists() cost explosion
+      allow list: if isVerifiedUser() && (existing().senderUid == request.auth.uid || request.auth.token.email == 'bravinbrown8@gmail.com');
+
+      allow create: if isVerifiedUser() &&
+        isValidId(inquiryId) &&
+        isValidSupportInquiry(incoming()) &&
+        incoming().senderUid == request.auth.uid &&
+        incoming().status == 'open' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isValidId(inquiryId) &&
+        isValidSupportInquiry(incoming()) &&
+        incoming().senderUid == existing().senderUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+        );
+
+      allow delete: if isVerifiedUser() && isValidId(inquiryId) && isAdmin();
+    }
+
+    // 9. Authenticated Customer Profiles + Isolated PII Contact Subcollection
+    match /customerProfiles/{userId} {
+      allow get: if isVerifiedUser() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if false;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        isValidCustomerProfile(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        existsAfter(/databases/$(database)/documents/customerProfiles/$(userId)/private/contact);
+
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        isValidCustomerProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'countryName', 'currencyCode', 'updatedAt'])
+        );
+
+      allow delete: if false;
+
+      // Pillar 1 (Master Gate) & Pillar 6 (Split-Collection PII Isolation)
+      match /private/{detailId} {
+        allow get: if isVerifiedUser() &&
+          isValidId(userId) &&
+          isValidId(detailId) && (
+            (request.auth.uid == userId &&
+              existing().uid == request.auth.uid &&
+              get(/databases/$(database)/documents/customerProfiles/$(userId)).data.uid == request.auth.uid) ||
+            isAdmin()
+          );
+
+        allow list: if false;
+
+        allow create: if isVerifiedUser() &&
+          isValidId(userId) &&
+          request.auth.uid == userId &&
+          detailId == 'contact' &&
+          isValidCustomerPrivatePii(incoming()) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          existsAfter(/databases/$(database)/documents/customerProfiles/$(userId)) &&
+          getAfter(/databases/$(database)/documents/customerProfiles/$(userId)).data.uid == request.auth.uid;
+
+        allow update: if isVerifiedUser() &&
+          isValidId(userId) &&
+          request.auth.uid == userId &&
+          detailId == 'contact' &&
+          isValidCustomerPrivatePii(incoming()) &&
+          incoming().uid == existing().uid &&
+          incoming().email == existing().email &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          get(/databases/$(database)/documents/customerProfiles/$(userId)).data.uid == request.auth.uid && (
+            incoming().diff(existing()).affectedKeys().hasOnly(['phone', 'defaultAddress', 'updatedAt'])
+          );
+
+        allow delete: if false;
+      }
+    }
+  }
+}

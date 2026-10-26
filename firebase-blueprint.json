@@ -1,0 +1,692 @@
+{
+  "entities": {
+    "ConnectionCheck": {
+      "title": "ConnectionCheck",
+      "description": "Read-only connectivity probe document used to validate Firestore availability.",
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "description": "True when probe exists."
+        }
+      },
+      "required": ["ok"]
+    },
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Trusted server-provisioned admin registry keyed by Firebase UID.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 5,
+          "maxLength": 120,
+          "description": "Verified administrator email."
+        }
+      },
+      "required": ["email"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Electronics catalog item or hardware combo manufactured by an Alibaba OEM partner with custom ELVORA branding.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Product or combo name."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["Combos", "Audio", "Wearables", "Power", "Computing"],
+          "maxLength": 32,
+          "description": "Electronics category."
+        },
+        "price": {
+          "type": "number",
+          "description": "AI-marked-up retail selling price in USD."
+        },
+        "oemCost": {
+          "type": "number",
+          "description": "Alibaba factory unit cost in USD."
+        },
+        "stockRemaining": {
+          "type": "integer",
+          "description": "Current inventory units remaining for sale."
+        },
+        "imageKey": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Studio asset identifier."
+        },
+        "specs": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 320,
+          "description": "Concise hardware technical specifications."
+        },
+        "oemSupplier": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Verified Alibaba OEM manufacturer name."
+        },
+        "logoImprint": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 80,
+          "description": "Factory custom logo specification."
+        },
+        "isPublished": {
+          "type": "boolean",
+          "description": "Whether the item is visible in the public electronics catalog."
+        },
+        "ownerEmail": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 120,
+          "description": "Store owner email who published the product."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "title",
+        "category",
+        "price",
+        "oemCost",
+        "stockRemaining",
+        "imageKey",
+        "specs",
+        "oemSupplier",
+        "logoImprint",
+        "isPublished",
+        "ownerEmail",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Prepaid electronics order tracking summary (non-PII fields only).",
+      "type": "object",
+      "properties": {
+        "orderCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 24,
+          "pattern": "^ELV-[0-9A-Z]+$",
+          "description": "Human-readable Elvora tracking code."
+        },
+        "buyerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Authenticated Firebase UID of the customer."
+        },
+        "itemTitle": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 140,
+          "description": "Primary ordered electronics summary."
+        },
+        "itemImageKey": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Studio image key for primary item."
+        },
+        "quantity": {
+          "type": "integer",
+          "description": "Total units ordered."
+        },
+        "totalUsd": {
+          "type": "number",
+          "description": "Verified total paid amount in USD (including positive local delivery fee)."
+        },
+        "deliveryZone": {
+          "type": "string",
+          "enum": ["express_city", "standard_metro", "hub_pickup"],
+          "maxLength": 32,
+          "description": "Selected local delivery tier."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["mobile_money", "card_gateway", "instant_bank"],
+          "maxLength": 32,
+          "description": "Prepaid payment gateway used."
+        },
+        "paymentRef": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Verified gateway transaction reference."
+        },
+        "oemOrderRef": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Alibaba OEM manufacturer batch/dispatch reference."
+        },
+        "logoImprint": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 80,
+          "description": "Custom OEM imprint label."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["payment_confirmed", "oem_branding", "local_hub", "out_for_delivery", "delivered"],
+          "maxLength": 32,
+          "description": "Real-time fulfillment stage."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "orderCode",
+        "buyerId",
+        "itemTitle",
+        "itemImageKey",
+        "quantity",
+        "totalUsd",
+        "deliveryZone",
+        "paymentMethod",
+        "paymentRef",
+        "oemOrderRef",
+        "logoImprint",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OrderPrivatePii": {
+      "title": "OrderPrivatePii",
+      "description": "Isolated PII sub-document storing customer shipping address, phone, and owner payout phone.",
+      "type": "object",
+      "properties": {
+        "buyerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Must match parent order buyerId and request.auth.uid."
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100,
+          "description": "Recipient full name."
+        },
+        "customerPhone": {
+          "type": "string",
+          "minLength": 7,
+          "maxLength": 24,
+          "pattern": "^\\+?[0-9 \\-()]{7,24}$",
+          "description": "Customer local delivery contact phone."
+        },
+        "deliveryAddress": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 240,
+          "description": "Street and neighborhood address for local courier."
+        },
+        "ownerPayoutPhone": {
+          "type": "string",
+          "minLength": 7,
+          "maxLength": 24,
+          "pattern": "^\\+?[0-9 \\-()]{7,24}$",
+          "description": "Owner phone number where payment confirmation was dispatched."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        }
+      },
+      "required": [
+        "buyerId",
+        "customerName",
+        "customerPhone",
+        "deliveryAddress",
+        "ownerPayoutPhone",
+        "createdAt"
+      ]
+    },
+    "OwnerSetting": {
+      "title": "OwnerSetting",
+      "description": "Private mobile store management configuration for the Elvora store owner.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the verified store owner."
+        },
+        "payoutPhone": {
+          "type": "string",
+          "minLength": 7,
+          "maxLength": 24,
+          "pattern": "^\\+?[0-9 \\-()]{7,24}$",
+          "description": "Owner phone number receiving instant payment confirmations and payouts."
+        },
+        "merchantName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80,
+          "description": "Official registered business name."
+        },
+        "autoOrderOem": {
+          "type": "boolean",
+          "description": "Whether AI automatically orders from Alibaba OEM on payment confirmation."
+        },
+        "autoPostFeed": {
+          "type": "boolean",
+          "description": "Whether AI automatically posts product image and remaining stock after payment."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerUid",
+        "payoutPhone",
+        "merchantName",
+        "autoOrderOem",
+        "autoPostFeed",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AiFeedPost": {
+      "title": "AiFeedPost",
+      "description": "Autonomous AI post displaying product photo to be sold, remaining stock, and owner phone payment confirmation.",
+      "type": "object",
+      "properties": {
+        "productId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Referenced catalog product ID."
+        },
+        "productTitle": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Product name."
+        },
+        "imageKey": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Studio image key."
+        },
+        "priceUsd": {
+          "type": "number",
+          "description": "Selling price in USD."
+        },
+        "stockRemaining": {
+          "type": "integer",
+          "description": "Exact units remaining after AI fulfillment update."
+        },
+        "oemSupplier": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Alibaba manufacturer fulfilling the ELVORA branded batch."
+        },
+        "logoImprint": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 80,
+          "description": "Custom OEM imprint label."
+        },
+        "caption": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 320,
+          "description": "AI-generated merchandising and stock status summary."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether visible in public OEM Direct feed."
+        },
+        "createdBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Admin UID who recorded the post."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        }
+      },
+      "required": [
+        "productId",
+        "productTitle",
+        "imageKey",
+        "priceUsd",
+        "stockRemaining",
+        "oemSupplier",
+        "logoImprint",
+        "caption",
+        "isPublic",
+        "createdBy",
+        "createdAt"
+      ]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Public non-PII verified buyer product review and star rating.",
+      "type": "object",
+      "properties": {
+        "productId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Reviewed catalog product ID."
+        },
+        "productTitle": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120,
+          "description": "Reviewed product title."
+        },
+        "authorUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Authenticated UID of the reviewer."
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80,
+          "description": "Public display name (non-PII)."
+        },
+        "rating": {
+          "type": "integer",
+          "description": "Star rating from 1 to 5."
+        },
+        "comment": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 400,
+          "description": "Buyer feedback text."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether visible in public reviews feed."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        }
+      },
+      "required": [
+        "productId",
+        "productTitle",
+        "authorUid",
+        "authorName",
+        "rating",
+        "comment",
+        "isPublic",
+        "createdAt"
+      ]
+    },
+    "SupportInquiry": {
+      "title": "SupportInquiry",
+      "description": "Customer Contact Us inquiry containing sender contact PII, isolated to sender or store admin.",
+      "type": "object",
+      "properties": {
+        "senderUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Authenticated UID of the customer submitting the inquiry."
+        },
+        "senderName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80,
+          "description": "Customer full name."
+        },
+        "contactInfo": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 120,
+          "description": "Customer reply phone or email (PII)."
+        },
+        "topic": {
+          "type": "string",
+          "enum": ["delivery", "combos", "payment", "warranty"],
+          "maxLength": 24,
+          "description": "Support topic category."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 500,
+          "description": "Customer inquiry details."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "resolved"],
+          "maxLength": 16,
+          "description": "Support ticket resolution status."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "senderUid",
+        "senderName",
+        "contactInfo",
+        "topic",
+        "message",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CustomerProfile": {
+      "title": "CustomerProfile",
+      "description": "Authenticated shopper public preferences including country and convertible currency selection (strictly non-PII).",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Authenticated Firebase UID of the shopper."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80,
+          "description": "Customer display name."
+        },
+        "countryName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60,
+          "description": "Selected country name (e.g. Kenya, Tanzania, China, Saudi Arabia, United States)."
+        },
+        "currencyCode": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 3,
+          "pattern": "^[A-Z]{3}$",
+          "description": "Preferred 3-letter ISO currency code."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "countryName",
+        "currencyCode",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CustomerPrivatePii": {
+      "title": "CustomerPrivatePii",
+      "description": "Strictly isolated PII sub-document storing a customer's email, phone number, and default delivery address.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Must match parent customerProfile uid and request.auth.uid."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 5,
+          "maxLength": 120,
+          "description": "Verified customer email address."
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 7,
+          "maxLength": 24,
+          "pattern": "^\\+?[0-9 \\-()]{7,24}$",
+          "description": "Customer contact phone number."
+        },
+        "defaultAddress": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 240,
+          "description": "Saved default street and city delivery address."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "uid",
+        "email",
+        "phone",
+        "defaultAddress",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/test/{testId}": {
+      "schema": { "$ref": "#/entities/ConnectionCheck" },
+      "description": "Connectivity probe document."
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminRole" },
+      "description": "Server-managed administrator role documents."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Electronics catalog managed by the verified Elvora store owner."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Non-PII real-time order tracking documents."
+    },
+    "/orders/{orderId}/private/{detailId}": {
+      "schema": { "$ref": "#/entities/OrderPrivatePii" },
+      "description": "Strictly isolated PII shipping and phone confirmation details per order."
+    },
+    "/ownerSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/OwnerSetting" },
+      "description": "Store owner payout phone, business name, and AI automation settings."
+    },
+    "/aiPosts/{postId}": {
+      "schema": { "$ref": "#/entities/AiFeedPost" },
+      "description": "AI-published product showcase and remaining stock announcements."
+    },
+    "/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Public non-PII verified buyer product ratings and reviews."
+    },
+    "/inquiries/{inquiryId}": {
+      "schema": { "$ref": "#/entities/SupportInquiry" },
+      "description": "Customer Contact Us tickets containing PII, strictly restricted to senderUid or verified store admin."
+    },
+    "/customerProfiles/{userId}": {
+      "schema": { "$ref": "#/entities/CustomerProfile" },
+      "description": "Authenticated customer non-PII country and currency preferences."
+    },
+    "/customerProfiles/{userId}/private/{detailId}": {
+      "schema": { "$ref": "#/entities/CustomerPrivatePii" },
+      "description": "Strictly isolated customer PII contact and default delivery address sub-document."
+    }
+  }
+}
